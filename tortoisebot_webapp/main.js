@@ -6,11 +6,27 @@ var app = new Vue({
         ros: null,
         logs: [],
         loading: false,
-        rosbridge_address: 'wss://i-09405a2d85d86dbd8.robotigniteacademy.com/4575e79a-8201-4432-959a-f1c77a317c6e/rosbridge/',
+        rosbridge_address: '',
         port: '9090',
         mapViewer: null,
         mapGridClient: null,
         interval: null,
+        dragging: false,
+        x: 'no',
+        y: 'no',
+        dragCircleStyle: {
+            margin: '0px',
+            top: '0px',
+            left: '0px',
+            display: 'none',
+            width: '75px',
+            height: '75px',
+        },
+        // joystick valules
+        joystick: {
+            vertical: 0,
+            horizontal: 0,
+        }
     },
     // helper methods to connect to ROS
     methods: {
@@ -29,7 +45,7 @@ var app = new Vue({
 
                 this.mapViewer = new ROS2D.Viewer({
                     divID: 'map',
-                    width: 420,
+                    width: 480,
                     height: 360
                 })
 
@@ -39,10 +55,11 @@ var app = new Vue({
                     rootObject: this.mapViewer.scene,
                     continuous: true,
                 })
-                // Scale the canvas to fit to the map
-                this.mapGridClient.on('change', () => {
-                    this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width, this.mapGridClient.currentGrid.height);
-                    this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x, this.mapGridClient.currentGrid.pose.position.y)
+
+                this.mapGridClient.on('change', ()=> {
+                    let scaleFactor=3
+                    this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width/scaleFactor, this.mapGridClient.currentGrid.height/scaleFactor);
+                    this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor)
                 })
             })
 
@@ -80,6 +97,61 @@ var app = new Vue({
                 ssl: true,
             })
         },
+
+
+        sendCommand: function(linear_x, angular_z) {
+            let topic = new ROSLIB.Topic({
+                ros: this.ros,
+                name: '/cmd_vel',
+                messageType: 'geometry_msgs/Twist'
+            })
+            let message = new ROSLIB.Message({
+                linear: { x: linear_x, y: 0, z: 0, },
+                angular: { x: 0, y: 0, z: (-1)*angular_z, },
+            })
+            topic.publish(message)
+        },
+        startDrag() {
+            this.dragging = true
+            this.x = this.y = 0
+        },
+        stopDrag() {
+            this.dragging = false
+            this.x = this.y = 'no'
+            this.dragCircleStyle.display = 'none'
+            this.resetJoystickVals()
+        },
+        doDrag(event) {
+            if (this.dragging) {
+                this.x = event.offsetX
+                this.y = event.offsetY
+                let ref = document.getElementById('dragstartzone')
+                this.dragCircleStyle.display = 'inline-block'
+
+                let minTop = ref.offsetTop - parseInt(this.dragCircleStyle.height) / 2
+                let maxTop = minTop + 200
+                let top = this.y + minTop
+                this.dragCircleStyle.top = `${top}px`
+
+                let minLeft = ref.offsetLeft - parseInt(this.dragCircleStyle.width) / 2
+                let maxLeft = minLeft + 200
+                let left = this.x + minLeft
+                this.dragCircleStyle.left = `${left}px`
+
+                this.setJoystickVals()
+            }
+        },
+        setJoystickVals() {
+            this.joystick.vertical = -1 * ((this.y / 200) - 0.5)
+            this.joystick.horizontal = +2 * ((this.x / 200) - 0.5)
+            this.sendCommand(this.joystick.vertical, this.joystick.horizontal)
+        },
+        resetJoystickVals() {
+            this.joystick.vertical = 0
+            this.joystick.horizontal = 0
+            this.sendCommand(this.joystick.vertical, this.joystick.horizontal)
+        },
+
     },
     mounted() {
         console.log("page is ready!")
@@ -88,5 +160,6 @@ var app = new Vue({
                 this.ros.getNodes((data) => { }, (error) => { })
             }
         }, 10000)
+        window.addEventListener('mouseup', this.stopDrag)
     },
 })

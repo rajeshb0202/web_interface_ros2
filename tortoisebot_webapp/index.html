@@ -17,6 +17,37 @@
 
     <script type="text/javascript" src="mjpegcanvas.min.js">
     </script>
+
+    <style type="text/css">
+        #dragstartzone {
+            position: relative;
+            display: inline-block;
+            width: 200px;
+            height: 200px;
+            border: 1px solid #333;
+            border-radius: 50%;
+            z-index: 10;
+            -moz-user-select: -moz-none;
+            -khtml-user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #dragCircle {
+            position: absolute;
+            z-index: 9;
+            border: 1px solid transparent;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 30%);
+            -moz-user-select: -moz-none;
+            -khtml-user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #dragCircle:hover {
+            background-color: lightcoral;
+        }
+    </style>
+
 </head>
 
 
@@ -77,6 +108,9 @@
                     </div>
                 </div>
 
+
+                
+
                 <div class="row">
                     <!-- camera -->
                     <div class="col-4">
@@ -89,13 +123,28 @@
                             </div>
                         </div>
                     </div>
+
                     <!-- commands -->
                     <div class="col-8">
                         <div class="card mt-2">
                             <div class="card-header">
                                 <h4>Commands</h4>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body text-start">
+                                <h2 class="text-start">Joystick</h2>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-sm-12 col-md-7 col-lg-5 col-xl-4 ">
+                                        <div id="dragstartzone" @mousedown="startDrag" @mousemove="doDrag">
+                                        </div>
+                                        <div id="dragCircle" :style="dragCircleStyle"></div>
+                                    </div>
+                                    <div class="col-sm-12 col-md-5 col-lg-7 col-xl-8  text-start">
+                                    
+                                        <p>Linear-x: {{ joystick.vertical.toFixed(3) }}</p>
+                                        <p>Angular-z: {{ joystick.horizontal.toFixed(3) }}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
