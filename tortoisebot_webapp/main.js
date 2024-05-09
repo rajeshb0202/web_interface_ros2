@@ -35,15 +35,15 @@ var app = new Vue({
         // waypoints
         waypoints: {
         1: {x:0.2, y:-0.5, z: 0},
-        2: {x:0.7, y:-0.5, z: 0},
-        3: {x:0.7, y:0.5, z: 0},
-        4: {x:0.2, y:0.5, z: 0},
-        5: {x:0.2, y:0.0, z: 0},
-        6: {x:-0.2, y:0.0, z: 0}, 
-        7: {x:-0.2, y:0.5, z: 0},
-        8: {x:-0.7, y:0.5, z: 0},
-        9: {x:-0.2, y:-0.5, z: 0},
-        10: {x:-0.7, y:-0.5, z: 0},
+        2: {x:0.65 , y:-0.5, z: 0},
+        3: {x:0.65, y:0.45, z: 0},
+        4: {x:0.2, y:0.45, z: 0},
+        5: {x:0.2, y:0.03, z: 0},
+        6: {x:-0.12, y:0.0, z: 0}, 
+        7: {x:-0.15, y:0.45, z: 0},
+        8: {x:-0.65, y:0.45, z: 0},
+        9: {x:-0.1, y:-0.45, z: 0},
+        10: {x:-0.65, y:-0.54, z: 0},
         },
         goal: null,
         action: {
@@ -64,31 +64,9 @@ var app = new Vue({
                 this.logs.unshift((new Date()).toTimeString() + ' - Connected!')
                 this.connected = true
                 this.loading = false
-             
-
                 // setting the camera
                 this.setCamera()
                 this.setMapViewer()
-
-                // this.mapViewer = new ROS2D.Viewer({
-                //     divID: 'map',
-                //     width: 480,
-                //     height: 360
-                // })
-
-                // // Setup the map client.
-                // this.mapGridClient = new ROS2D.OccupancyGridClient({
-                //     ros: this.ros,
-                //     rootObject: this.mapViewer.scene,
-                //     continuous: true,
-                // })
-
-                // this.mapGridClient.on('change', ()=> {
-                //     let scaleFactor=3
-                //     this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width/scaleFactor, this.mapGridClient.currentGrid.height/scaleFactor);
-                //     this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor)
-                // })
-
                 // this.setup3DViewer()
             })
 
@@ -147,9 +125,9 @@ var app = new Vue({
             })
 
             this.mapGridClient.on('change', ()=> {
-                let scaleFactor=3
+                let scaleFactor=4;
                 this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width/scaleFactor, this.mapGridClient.currentGrid.height/scaleFactor);
-                this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor)
+                this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor);
             })
             this.logs.unshift('Displaying the generated map...')
         },
@@ -203,6 +181,35 @@ var app = new Vue({
             this.joystick.horizontal = +2 * ((this.x / 200) - 0.5)
             this.sendCommand(this.joystick.vertical, this.joystick.horizontal)
         },
+        // doDrag(event) {
+        //     if (this.dragging) {
+        //         let ref = document.getElementById('dragstartzone');
+
+        //         // Calculate normalized positions within the dragstartzone
+        //         let normalizedX = event.offsetX - ref.offsetWidth / 2;  // Center x to 0
+        //         let normalizedY = event.offsetY - ref.offsetHeight / 2; // Center y to 0
+
+        //         // Ensure the joystick does not move out of the dragstartzone's boundaries
+        //         normalizedX = Math.max(-ref.offsetWidth / 2, Math.min(normalizedX, ref.offsetWidth / 2));
+        //         normalizedY = Math.max(-ref.offsetHeight / 2, Math.min(normalizedY, ref.offsetHeight / 2));
+
+        //         // Update the dragCircle position
+        //         this.dragCircleStyle.left = `${normalizedX + ref.offsetWidth / 2}px`;
+        //         this.dragCircleStyle.top = `${normalizedY + ref.offsetHeight / 2}px`;
+
+        //         // Set display properties and update the joystick values
+        //         this.dragCircleStyle.display = 'inline-block';
+        //         this.setJoystickVals(normalizedX, normalizedY);
+        //     }
+        // },
+        // setJoystickVals(normalizedX, normalizedY) {
+        //     let ref = document.getElementById('dragstartzone');
+        //     this.joystick.vertical = -1 * (normalizedY / (ref.offsetHeight / 2));
+        //     this.joystick.horizontal = (normalizedX / (ref.offsetWidth / 2));
+        //     this.sendCommand(this.joystick.vertical, this.joystick.horizontal);
+        // },
+
+
         resetJoystickVals() {
             this.joystick.vertical = 0
             this.joystick.horizontal = 0
@@ -212,7 +219,8 @@ var app = new Vue({
 
         // methods for the waypoint buttons
         sendGoal: function(num) {
-            let print_once = false
+            let print_once_status = false
+            let print_once_feedback = false
             let actionClient = new ROSLIB.ActionClient({
                 ros : this.ros,
                 serverName : '/tortoisebot_as',
@@ -233,20 +241,23 @@ var app = new Vue({
             this.goal.on('status', (status) => {
                 this.action.status = status
                 console.log(this.action.status.status)
-                if (this.action.status.status ==1 && !print_once) {
+                if (this.action.status.status ==1 && !print_once_status) {
                     this.logs.unshift('goal has been accepted by the server...')
-                    this.logs.unshift('moving to waypoint- '+ num)
-                    print_once = true
+                    this.logs.unshift('moving towards waypoint- '+ num)
+                    print_once_status = true
                 }
-                else if (this.action.status.status ==0 && !print_once) {
+                else if (this.action.status.status ==0 && !print_once_status) {
                     this.logs.unshift('The requested goal is rejected by the server...')
-                    print_once = true
+                    print_once_status = true
                 }
             })
 
             this.goal.on('feedback', (feedback) => {
                 this.action.feedback = feedback
-                // console.log(this.action.feedback.state)
+                if (this.action.feedback.state == 'The goal has been cancelled/preempted' && !print_once_feedback ) {
+                    this.logs.unshift('The goal has been cancelled/preempted')
+                    print_once_feedback = true
+                }
             })
 
             this.goal.on('result', (result) => {
