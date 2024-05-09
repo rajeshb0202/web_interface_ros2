@@ -232,7 +232,7 @@ var app = new Vue({
 
             this.goal.on('status', (status) => {
                 this.action.status = status
-                // console.log(this.action.status.status)
+                console.log(this.action.status.status)
                 if (this.action.status.status ==1 && !print_once) {
                     this.logs.unshift('goal has been accepted by the server...')
                     this.logs.unshift('moving to waypoint- '+ num)
@@ -246,6 +246,7 @@ var app = new Vue({
 
             this.goal.on('feedback', (feedback) => {
                 this.action.feedback = feedback
+                // console.log(this.action.feedback.state)
             })
 
             this.goal.on('result', (result) => {
