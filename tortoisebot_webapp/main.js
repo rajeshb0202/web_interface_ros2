@@ -26,8 +26,33 @@ var app = new Vue({
         joystick: {
             vertical: 0,
             horizontal: 0,
+        },
+        // 3D stuff
+        viewer: null,
+        tfClient: null,
+        urdfClient: null,
+
+        // waypoints
+        waypoints: {
+        1: {x:0.2, y:-0.5, z: 0},
+        2: {x:0.7, y:-0.5, z: 0},
+        3: {x:0.7, y:0.5, z: 0},
+        4: {x:0.2, y:0.5, z: 0},
+        5: {x:0.2, y:0.0, z: 0},
+        6: {x:-0.2, y:0.0, z: 0}, 
+        7: {x:-0.2, y:0.5, z: 0},
+        8: {x:-0.7, y:0.5, z: 0},
+        9: {x:-0.2, y:-0.5, z: 0},
+        10: {x:-0.7, y:-0.5, z: 0},
+        },
+        goal: null,
+        action: {
+            feedback: { position: 0, state: 'idle' },
+            result: { success: false },
+            status: { status: 0, text: '' },
         }
     },
+
     // helper methods to connect to ROS
     methods: {
         connect: function() {
@@ -39,28 +64,32 @@ var app = new Vue({
                 this.logs.unshift((new Date()).toTimeString() + ' - Connected!')
                 this.connected = true
                 this.loading = false
+             
 
                 // setting the camera
                 this.setCamera()
+                this.setMapViewer()
 
-                this.mapViewer = new ROS2D.Viewer({
-                    divID: 'map',
-                    width: 480,
-                    height: 360
-                })
+                // this.mapViewer = new ROS2D.Viewer({
+                //     divID: 'map',
+                //     width: 480,
+                //     height: 360
+                // })
 
-                // Setup the map client.
-                this.mapGridClient = new ROS2D.OccupancyGridClient({
-                    ros: this.ros,
-                    rootObject: this.mapViewer.scene,
-                    continuous: true,
-                })
+                // // Setup the map client.
+                // this.mapGridClient = new ROS2D.OccupancyGridClient({
+                //     ros: this.ros,
+                //     rootObject: this.mapViewer.scene,
+                //     continuous: true,
+                // })
 
-                this.mapGridClient.on('change', ()=> {
-                    let scaleFactor=3
-                    this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width/scaleFactor, this.mapGridClient.currentGrid.height/scaleFactor);
-                    this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor)
-                })
+                // this.mapGridClient.on('change', ()=> {
+                //     let scaleFactor=3
+                //     this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width/scaleFactor, this.mapGridClient.currentGrid.height/scaleFactor);
+                //     this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor)
+                // })
+
+                // this.setup3DViewer()
             })
 
 
@@ -75,12 +104,15 @@ var app = new Vue({
                 this.loading = false
                 document.getElementById('divCamera').innerHTML = ''
                 document.getElementById('map').innerHTML = ''
+                // this.unset3DViewer()
             })
         },
         disconnect: function() {
             this.ros.close()
+            this.logs=[]
         },
 
+     
         // method for rendering camera images
         setCamera: function() {
             let without_wss = this.rosbridge_address.split('wss://')[1]
@@ -96,9 +128,34 @@ var app = new Vue({
                 topic: '/camera/image_raw',
                 ssl: true,
             })
+            this.logs.unshift('camera is ready...')
+        },
+
+        // method for rendering generated map
+        setMapViewer: function() {
+            this.mapViewer = new ROS2D.Viewer({
+                divID: 'map',
+                width: 480,
+                height: 360
+            })
+
+            // Setup the map client.
+            this.mapGridClient = new ROS2D.OccupancyGridClient({
+                ros: this.ros,
+                rootObject: this.mapViewer.scene,
+                continuous: true,
+            })
+
+            this.mapGridClient.on('change', ()=> {
+                let scaleFactor=3
+                this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width/scaleFactor, this.mapGridClient.currentGrid.height/scaleFactor);
+                this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor)
+            })
+            this.logs.unshift('Displaying the generated map...')
         },
 
 
+        //section for handling joystick
         sendCommand: function(linear_x, angular_z) {
             let topic = new ROSLIB.Topic({
                 ros: this.ros,
@@ -151,6 +208,106 @@ var app = new Vue({
             this.joystick.horizontal = 0
             this.sendCommand(this.joystick.vertical, this.joystick.horizontal)
         },
+
+
+        // methods for the waypoint buttons
+        sendGoal: function(num) {
+            let print_once = false
+            let actionClient = new ROSLIB.ActionClient({
+                ros : this.ros,
+                serverName : '/tortoisebot_as',
+                actionName : 'course_web_dev_ros/WaypointActionAction'
+            })
+
+            this.goal = new ROSLIB.Goal({
+                actionClient : actionClient,
+                goalMessage: {
+                       position: {
+                            x: this.waypoints[num].x,
+                            y: this.waypoints[num].y,
+                            z: this.waypoints[num].z
+                       }
+                }
+            })
+
+            this.goal.on('status', (status) => {
+                this.action.status = status
+                // console.log(this.action.status.status)
+                if (this.action.status.status ==1 && !print_once) {
+                    this.logs.unshift('goal has been accepted by the server...')
+                    this.logs.unshift('moving to waypoint- '+ num)
+                    print_once = true
+                }
+                else if (this.action.status.status ==0 && !print_once) {
+                    this.logs.unshift('The requested goal is rejected by the server...')
+                    print_once = true
+                }
+            })
+
+            this.goal.on('feedback', (feedback) => {
+                this.action.feedback = feedback
+            })
+
+            this.goal.on('result', (result) => {
+                this.action.result = result
+                if (this.action.result.success == true) {
+                    this.logs.unshift('Reached to the waypoint- ' + num)
+                }
+            })
+
+            this.goal.send()
+            this.logs.unshift('goal to the waypoint-' + num + ' sent to the server...')
+            
+        },
+        cancelGoal: function() {
+            this.goal.cancel()
+            this.logs.unshift('Cancelling the Goal...')
+        },
+
+
+        // setup3DViewer() {
+        //     this.viewer = new ROS3D.Viewer({
+        //         background: '#cccccc',
+        //         divID: 'div3DViewer',
+        //         width: 400,
+        //         height: 300,
+        //         antialias: true,
+        //         fixedFrame: 'odom'
+        //     })
+
+        //     // Add a grid.
+        //     this.viewer.addObject(new ROS3D.Grid({
+        //         color:'#0181c4',
+        //         cellSize: 0.5,
+        //         num_cells: 20
+        //     }))
+
+        //     // Setup a client to listen to TFs.
+        //     this.tfClient = new ROSLIB.TFClient({
+        //         ros: this.ros,
+        //         angularThres: 0.01,
+        //         transThres: 0.01,
+        //         rate: 10.0
+        //     })
+
+        //     // Setup the URDF client.
+        //     this.urdfClient = new ROS3D.UrdfClient({
+        //         ros: this.ros,
+        //         param: 'robot_description',
+        //         tfClient: this.tfClient,
+        //         // We use "path: location.origin + location.pathname"
+        //         // instead of "path: window.location.href" to remove query params,
+        //         // otherwise the assets fail to load
+        //         path: location.origin + location.pathname,
+        //         rootObject: this.viewer.scene,
+        //         loader: ROS3D.COLLADA_LOADER_2
+        //     })
+        // },
+        // unset3DViewer() {
+        //     document.getElementById('div3DViewer').innerHTML = ''
+        // },
+
+      
 
     },
     mounted() {
