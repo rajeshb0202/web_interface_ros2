@@ -64,10 +64,10 @@ var app = new Vue({
                 this.logs.unshift((new Date()).toTimeString() + ' - Connected!')
                 this.connected = true
                 this.loading = false
-                // setting the camera
+                
                 this.setCamera()
                 this.setMapViewer()
-                // this.setup3DViewer()
+                this.setup3DViewer()
             })
 
 
@@ -82,7 +82,7 @@ var app = new Vue({
                 this.loading = false
                 document.getElementById('divCamera').innerHTML = ''
                 document.getElementById('map').innerHTML = ''
-                // this.unset3DViewer()
+                this.unset3DViewer()
             })
         },
         disconnect: function() {
@@ -129,7 +129,7 @@ var app = new Vue({
                 this.mapViewer.scaleToDimensions(this.mapGridClient.currentGrid.width/scaleFactor, this.mapGridClient.currentGrid.height/scaleFactor);
                 this.mapViewer.shift(this.mapGridClient.currentGrid.pose.position.x/scaleFactor, this.mapGridClient.currentGrid.pose.position.y/scaleFactor);
             })
-            this.logs.unshift('Displaying the generated map...')
+            this.logs.unshift('Generated map is loaded...')
         },
 
 
@@ -181,35 +181,6 @@ var app = new Vue({
             this.joystick.horizontal = +2 * ((this.x / 200) - 0.5)
             this.sendCommand(this.joystick.vertical, this.joystick.horizontal)
         },
-        // doDrag(event) {
-        //     if (this.dragging) {
-        //         let ref = document.getElementById('dragstartzone');
-
-        //         // Calculate normalized positions within the dragstartzone
-        //         let normalizedX = event.offsetX - ref.offsetWidth / 2;  // Center x to 0
-        //         let normalizedY = event.offsetY - ref.offsetHeight / 2; // Center y to 0
-
-        //         // Ensure the joystick does not move out of the dragstartzone's boundaries
-        //         normalizedX = Math.max(-ref.offsetWidth / 2, Math.min(normalizedX, ref.offsetWidth / 2));
-        //         normalizedY = Math.max(-ref.offsetHeight / 2, Math.min(normalizedY, ref.offsetHeight / 2));
-
-        //         // Update the dragCircle position
-        //         this.dragCircleStyle.left = `${normalizedX + ref.offsetWidth / 2}px`;
-        //         this.dragCircleStyle.top = `${normalizedY + ref.offsetHeight / 2}px`;
-
-        //         // Set display properties and update the joystick values
-        //         this.dragCircleStyle.display = 'inline-block';
-        //         this.setJoystickVals(normalizedX, normalizedY);
-        //     }
-        // },
-        // setJoystickVals(normalizedX, normalizedY) {
-        //     let ref = document.getElementById('dragstartzone');
-        //     this.joystick.vertical = -1 * (normalizedY / (ref.offsetHeight / 2));
-        //     this.joystick.horizontal = (normalizedX / (ref.offsetWidth / 2));
-        //     this.sendCommand(this.joystick.vertical, this.joystick.horizontal);
-        // },
-
-
         resetJoystickVals() {
             this.joystick.vertical = 0
             this.joystick.horizontal = 0
@@ -276,52 +247,56 @@ var app = new Vue({
             this.logs.unshift('Cancelling the Goal...')
         },
 
+        
+        // methods for the 3d viewer to visualise the robot model
+        setup3DViewer() {
+            
+            this.viewer = new ROS3D.Viewer({
+                background: '#cccccc',
+                divID: 'div3DViewer',
+                width: 400,
+                height: 360,
+                antialias: true,
+                fixedFrame: 'base_link'
+            })
 
-        // setup3DViewer() {
-        //     this.viewer = new ROS3D.Viewer({
-        //         background: '#cccccc',
-        //         divID: 'div3DViewer',
-        //         width: 400,
-        //         height: 300,
-        //         antialias: true,
-        //         fixedFrame: 'odom'
-        //     })
+            // Add a grid.
+            this.viewer.addObject(new ROS3D.Grid({
+                color:'#0181c4',
+                cellSize: 0.5,
+                num_cells: 20
+            }))
 
-        //     // Add a grid.
-        //     this.viewer.addObject(new ROS3D.Grid({
-        //         color:'#0181c4',
-        //         cellSize: 0.5,
-        //         num_cells: 20
-        //     }))
+            // Setup a client to listen to TFs.
+            this.tfClient = new ROSLIB.TFClient({
+                ros: this.ros,
+                angularThres: 0.01,
+                transThres: 0.01,
+                rate: 10.0,
+            })
 
-        //     // Setup a client to listen to TFs.
-        //     this.tfClient = new ROSLIB.TFClient({
-        //         ros: this.ros,
-        //         angularThres: 0.01,
-        //         transThres: 0.01,
-        //         rate: 10.0
-        //     })
-
-        //     // Setup the URDF client.
-        //     this.urdfClient = new ROS3D.UrdfClient({
-        //         ros: this.ros,
-        //         param: 'robot_description',
-        //         tfClient: this.tfClient,
-        //         // We use "path: location.origin + location.pathname"
-        //         // instead of "path: window.location.href" to remove query params,
-        //         // otherwise the assets fail to load
-        //         path: location.origin + location.pathname,
-        //         rootObject: this.viewer.scene,
-        //         loader: ROS3D.COLLADA_LOADER_2
-        //     })
-        // },
-        // unset3DViewer() {
-        //     document.getElementById('div3DViewer').innerHTML = ''
-        // },
+            // Setup the URDF client.
+            this.urdfClient = new ROS3D.UrdfClient({
+                ros: this.ros,
+                param: '/robot_description',
+                tfClient: this.tfClient,
+                // We use "path: location.origin + location.pathname"
+                // instead of "path: window.location.href" to remove query params,
+                // otherwise the assets fail to load
+                path: location.origin + location.pathname,
+                rootObject: this.viewer.scene,
+                loader: ROS3D.COLLADA_LOADER_2
+            })
+            this.logs.unshift('Robot model viewer is loaded...')
+        },
+        unset3DViewer() {
+            document.getElementById('div3DViewer').innerHTML = ''
+        },
 
       
 
     },
+
     mounted() {
         console.log("page is ready!")
         this.interval = setInterval(() => {

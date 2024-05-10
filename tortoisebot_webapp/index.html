@@ -8,23 +8,29 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/eventemitter2/lib/eventemitter2.min.js"> </script>
     <script type="text/javascript" src="https://s3.eu-west-1.amazonaws.com/rosject.io/js/roslib.min.js"> </script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/easeljs/lib/easeljs.min.js"></script>
-     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/ros2d/build/ros2d.min.js"></script>
-    <!-- Vuejs -->
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"> </script>
-
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/ros2d/build/ros2d.min.js"></script>
     <script type="text/javascript" src="./libs/mjpegcanvas.min.js"></script>
-     <!-- 3D visualization -->
-    <!-- <script src="http://static.robotwebtools.org/threejs/current/three.min.js"></script>
-    <script src="http://static.robotwebtools.org/threejs/current/ColladaLoader.min.js"></script>
-    <script src="http://static.robotwebtools.org/ColladaAnimationCompress/current/ColladaLoader2.min.js"></script>
-    <script src="http://static.robotwebtools.org/threejs/current/STLLoader.min.js"></script>
-    <script src="http://static.robotwebtools.org/ros3djs/current/ros3d.min.js"></script> -->
-
+    <script src="./libs/ros3d.min.js"></script>
     <script src="./libs/three.min.js"></script>
     <script src="./libs/ColladaLoader.js"></script>
     <script src="./libs/ColladaLoader2.js"></script>
     <script src="./libs/STLLoader.js"></script>
-    <script src="./libs/ros3d.min.js"></script>
+
+         <!-- 3D visualization -->
+    <!-- <script src="http://static.robotwebtools.org/ros3djs/current/ros3d.min.js"></script>         
+    <script src="http://static.robotwebtools.org/threejs/current/three.min.js"></script>
+    <script src="http://static.robotwebtools.org/threejs/current/ColladaLoader.min.js"></script>
+    <script src="http://static.robotwebtools.org/ColladaAnimationCompress/current/ColladaLoader2.min.js"></script>
+    <script src="http://static.robotwebtools.org/threejs/current/STLLoader.min.js"></script> -->
+ 
+    
+    <!-- Vuejs -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"> </script>
+
+   
+
+
+   
 
 
 
@@ -197,6 +203,12 @@
         script.type = 'text/javascript';
         script.src = 'main.js?v=11.' + Date.now();
         document.head.appendChild(script);
+
+        window.addEventListener('load', function() {
+            console.log(ROS3D);
+            // Initialize or use ROS3D here
+        });
+
     </script>
 </body>
 
